@@ -1,0 +1,471 @@
+{
+  "name": "order-baju",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.input_pelanggan }}",
+        "options": {
+          "systemMessage": "=Kamu CS toko baju online yang asik ala anak muda. Tugasmu membalas chat dengan super singkat, santai, dan to the point.\n\nNomor HP pelanggan: {{ $('WhatsApp Trigger').item.json.messages[0].from }}\n\nATURAN PALING PENTING - JANGAN DILANGGAR:\nKata \"http\" TIDAK BOLEH muncul di jawabanmu kecuali customer eksplisit minta foto/gambar di pesan ini. Ini berlaku walaupun tool database mengembalikan field image_url atau link apapun. Data link dari tool HANYA untuk kamu ketahui ready/tidaknya barang, BUKAN untuk ditampilkan ke customer kecuali diminta foto. Sistem otomatis mendeteksi kata \"http\" di jawabanmu untuk mengirim gambar, jadi kalau kamu nulis link padahal tidak diminta, gambar akan otomatis terkirim tanpa diminta. Ini fatal, jangan sampai terjadi.\n\nSEBELUM BALAS, CEK DULU:\nApakah pesan customer mengandung kata minta foto/gambar secara eksplisit (contoh: \"foto dong\", \"liat gambarnya\", \"ada fotonya ga\", \"kirim gambar\")?\n- KALAU TIDAK ADA kata itu -> jawaban WAJIB teks polos saja, TIDAK BOLEH ada format ![foto](...) dalam bentuk apapun dan TIDAK BOLEH ada kata \"http\" sama sekali, walaupun kamu pegang data gambar dari tool.\n- KALAU ADA -> kirim persis format ini, JANGAN diubah, diparafrase, atau ditambah kata apapun:\nini fotonya kak, apakah berminat\n![foto](URL_GAMBAR)\n\nDILARANG mengganti caption dengan kalimat lain seperti \"berikut fotonya\", \"ini dia\", \"mau pesan yang mana\", atau variasi apapun. Caption HARUS persis: \"ini fotonya kak, apakah berminat\"\n\nDefault state: anggap SETIAP pertanyaan sebagai permintaan TEKS SAJA kecuali kata \"foto\"/\"gambar\" muncul jelas di pesan customer itu sendiri saat ini (bukan asumsi dari histori chat sebelumnya).\n\nAturan wajib lain:\n1. Di luar konteks: kalau ditanya hal di luar urusan toko baju atau produk kita, WAJIB balas persis: \"saya tidak tahu\"\n3. Syarat order: JANGAN PERNAH menjalankan tool Add to Cart kalau pelanggan belum menyebutkan ukurannya. Tahan dulu dan tanya \"mau ukuran apa kak?\"\n4. Analisis foto pelanggan: Sistem akan memberikan HASIL FINAL analisis foto (jenis, warna, motif) dalam bentuk apapun kalimatnya. Anggap hasil itu SUDAH 100% final dan tidak bisa diganggu gugat, walau kalimatnya menyebut lebih dari satu kata terkait pola (misal \"bergaris kotak-kotak\" artinya motifnya KOTAK-KOTAK, bukan garis biasa). HARAM hukumnya bertanya balik ke customer soal jenis/warna/motif baju dalam kondisi apapun setelah foto dianalisis. Langsung proses pesanan jika pelanggan sudah menentukan pilihan.\n5. Super singkat: jawab seperlunya. Kalau barang ada, balas \"ready kak\" atau sebut harganya saja, TANPA link atau gambar.\n6. Anti simbol: teks polos seperti SMS, tanpa emoji, bintang, atau format lain."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2736,
+        480
+      ],
+      "id": "ba237db6-113e-4bb0-94f1-da0c95d2081e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.6-sol",
+          "mode": "list",
+          "cachedResultName": "gpt-5.6-sol"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2608,
+        720
+      ],
+      "id": "2a01770a-a7f2-48e5-b4c1-6dc1f9315059",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        2736,
+        720
+      ],
+      "id": "ec966c37-5525-43c7-acd6-b2ee71e7ed93",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Gunakan tool ini WAJIB saat pelanggan memesan makanan. \nKamu membutuhkan 3 data untuk tool ini:\n1. nomor_hp: ambil dari Session ID / nomor pelanggan saat ini.\n2. pesanan: detail pesanan (nama makanan dan jumlah) dalam bentuk teks singkat.\n3. total_harga: angka total belanjaan hasil hitunganmu (hanya angka).",
+        "operation": "executeQuery",
+        "query": "INSERT INTO orders (customer_phone, items, total, status) \nVALUES ($1, $2, $3, 'WAITING_CONFIRMATION');",
+        "options": {
+          "queryParameters": "={{ [$json.messages[0].from, $fromAI('pesanan'), $fromAI('total_harga')] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.7,
+      "position": [
+        2864,
+        720
+      ],
+      "id": "c4a6067e-7d76-4ace-a634-4548db4358f6",
+      "name": "Add to Cart"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        480
+      ],
+      "id": "9bfc2ced-6522-4859-900a-ac3a8b9a841e",
+      "name": "WhatsApp Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5.6-sol",
+          "mode": "list",
+          "cachedResultName": "GPT-5.6-SOL"
+        },
+        "text": "kamu adalah ahli fashion. deskripsikan pakaian di gambar ini dengan sangat detail dan akurat. wajib sebutkan jenis pakaian (kaos/kemeja/jaket/dll), warna, dan polanya secara spesifik (polos/kotak-kotak/garis-garis). jawab langsung poinnya saja dalam satu kalimat singkat. motif hanya diperbolehkan 1 saja, misal kotak/garis/polkadot",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        2320,
+        560
+      ],
+      "id": "03fecd97-70bf-43f3-b468-6497c0fd1a75",
+      "name": "Analyze image"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2160,
+        560
+      ],
+      "id": "d1d8a12c-9325-4af8-a1f2-1d900b9ba921",
+      "name": "Fetch Image"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.messages[0].image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        560
+      ],
+      "id": "f26c22b6-0c43-41cc-9f89-21395051c588",
+      "name": "Download Media"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2a3ba9ee-a5f7-419f-8799-b339d17472bc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "TEXT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0cfe744f-f77f-4ae9-8aa7-a16298f765cf",
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IMAGE"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1840,
+        480
+      ],
+      "id": "f01ff8a1-33d1-4ebb-a72f-60e3ed7d3d98",
+      "name": "Message Type Router"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "157e272c-9815-481c-bfb4-3843c35be11e",
+              "name": "input_pelanggan",
+              "value": "={{ $json.messages?.[0]?.text?.body || (\"[Deskripsi Baju dari AI Visual: \" + $json.message?.content + \"] | Pesan/Caption Pelanggan: \" + ($('WhatsApp Trigger').item.json.messages[0].image.caption || \"Tolong cek baju ini\")) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2544,
+        480
+      ],
+      "id": "1b12b6e2-937b-41ed-92e7-380fdbb3a5a3",
+      "name": "Format Input Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c843a07f-7200-4ec4-a7f6-96072ef718d6",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "http",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3040,
+        480
+      ],
+      "id": "cdc8ef03-a2a2-469f-a41f-be865b462fee",
+      "name": "Contains Image URL?"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "messageType": "image",
+        "mediaLink": "={{ $json.output.match(/https?:\\/\\/[^\\s\\)]+/)[0] }}",
+        "additionalFields": {
+          "mediaCaption": "={{ $json.output.replace(/!\\[.*?\\]\\(.*?\\)/g, '').replace(/\\*/g, '').trim() }}"
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        3232,
+        384
+      ],
+      "id": "f1d3b31a-e448-4e79-9ea3-9f4e115e3d9f",
+      "name": "Send Image Reply"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "textBody": "={{ $json.output.replace(/\\*/g, '') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        3232,
+        576
+      ],
+      "id": "4bc83948-2be1-40f5-bbd5-41fc8dd6ef46",
+      "name": "Send Text Reply"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Contains Image URL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Cart": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message Type Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Format Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Image": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media": {
+      "main": [
+        [
+          {
+            "node": "Fetch Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Type Router": {
+      "main": [
+        [
+          {
+            "node": "Format Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Input Data": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contains Image URL?": {
+      "main": [
+        [
+          {
+            "node": "Send Image Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Text Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Text Reply": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}
