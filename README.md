@@ -16,6 +16,7 @@ Sebelum mengimpor workflow ini, pastikan Anda memiliki kredensial / akun untuk l
    - `WhatsApp Trigger`, `Download Media`, `Fetch Image`, `Send Image Reply`, `Send Text Reply`
    - `OpenAI Chat Model`, `Analyze image`
    - `Add to Cart` (PostgreSQL)
+5. Buat Google Sheet dengan data yang sudah disediakan.
 
 ## 🗄️ Persiapan Database (PostgreSQL)
 
