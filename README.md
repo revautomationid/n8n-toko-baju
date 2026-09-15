@@ -4,7 +4,7 @@
 
 Sebelum mengimpor workflow ini, pastikan Anda memiliki kredensial / akun untuk layanan berikut:
 1. **WhatsApp Cloud API** (via Meta Developer) untuk *trigger* dan pengiriman pesan.
-2. **OpenAI API** (model `gpt-4o` atau model vision yang setara) untuk *AI Agent* dan analisis gambar.
+2. **OpenAI API** (model `gpt-5.6-sol` atau model vision yang setara) untuk *AI Agent* dan analisis gambar.
 3. **PostgreSQL** untuk *database* pesanan.
 
 ## Cara Instalasi
